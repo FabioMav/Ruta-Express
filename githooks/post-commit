@@ -1,0 +1,11 @@
+#!/bin/sh
+rama_actual=$(git rev-parse --abbrev-ref HEAD)
+if [ "$rama_actual" = "HEAD" ]; then
+  exit 0
+fi
+echo "post-commit: haciendo push automatico a origin/$rama_actual..."
+git push origin "$rama_actual"
+if [ $? -ne 0 ]; then
+  echo "post-commit: el push automatico fallo. Hace Fetch origin (o Pull)"
+  echo "en GitHub Desktop y despues Push origin a mano."
+fi

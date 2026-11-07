@@ -1,0 +1,62 @@
+name: Ruta Expres - CI, Evidently y CD
+run-name: "CI/CD Ruta Expres - ${{ github.event_name }} por ${{ github.actor }}"
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: CI - Pruebas, validacion e informe de Evidently
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obtener los archivos del repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Ejecutar pruebas automatizadas
+        run: python -m unittest discover -v
+
+      - name: Validar datos/referencia.csv y datos/actual.csv
+        run: python validador.py
+
+      - name: Generar la portada y el informe de Evidently
+        run: python generar_informe.py
+
+      - name: Preparar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Guardar el sitio generado como artefacto de Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  cd:
+    name: CD - Publicacion (solo si CI termino correctamente)
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
